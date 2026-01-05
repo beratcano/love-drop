@@ -80,6 +80,38 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          id: number
+          match_id: number
+          sender_id: string
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          match_id: number
+          sender_id: string
+          content: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          match_id?: number
+          sender_id?: string
+          content?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -155,3 +187,9 @@ export type Database = {
     }
   }
 }
+
+// Export type aliases for easier use
+export type Course = Database["public"]["Tables"]["courses"]["Row"]
+export type Match = Database["public"]["Tables"]["matches"]["Row"]
+export type Message = Database["public"]["Tables"]["messages"]["Row"]
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"]

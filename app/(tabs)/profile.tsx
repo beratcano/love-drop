@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useFocusEffect } from "expo-router";
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
@@ -21,9 +22,11 @@ export default function Profile() {
     const [stats, setStats] = useState({ matches: 0, swipes: 0 });
     const [avatarBuilderVisible, setAvatarBuilderVisible] = useState(false);
 
-    useEffect(() => {
-        fetchProfile();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            fetchProfile();
+        }, [])
+    );
 
     async function fetchProfile() {
         setLoading(true);
@@ -105,7 +108,7 @@ export default function Profile() {
         <SafeAreaView className="flex-1 bg-white">
             <ScrollView contentContainerStyle={{ padding: 24 }}>
                 <View className="items-center mt-4 mb-8">
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => setAvatarBuilderVisible(true)}
                         className="relative"
                     >

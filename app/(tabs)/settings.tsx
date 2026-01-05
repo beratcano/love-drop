@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, Alert, Platform } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "expo-router";
 import { Save, ArrowLeft } from "lucide-react-native";
+import { useToast } from "../../context/ToastContext";
 
 interface ProfileData {
     full_name: string;
@@ -14,6 +15,7 @@ interface ProfileData {
 
 export default function Settings() {
     const router = useRouter();
+    const { showToast } = useToast();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [profile, setProfile] = useState<ProfileData>({
@@ -52,6 +54,7 @@ export default function Settings() {
             }
         } catch (error) {
             console.error("Error fetching profile:", error);
+            showToast("Failed to fetch profile", "error");
         } finally {
             setLoading(false);
         }
@@ -78,18 +81,10 @@ export default function Settings() {
                 throw error;
             }
 
-            if (Platform.OS !== "web") {
-                Alert.alert("Success", "Profile updated!");
-            } else {
-                alert("Profile updated!");
-            }
+            showToast("Profile updated successfully!", "success");
         } catch (error: any) {
             console.error("Error saving profile:", error);
-            if (Platform.OS !== "web") {
-                Alert.alert("Error", error.message || "Failed to save profile");
-            } else {
-                alert("Error: " + (error.message || "Failed to save profile"));
-            }
+            showToast(error.message || "Failed to save profile", "error");
         } finally {
             setSaving(false);
         }
