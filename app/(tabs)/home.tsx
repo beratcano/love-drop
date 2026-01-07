@@ -25,6 +25,7 @@ type Course = Database["public"]["Tables"]["courses"]["Row"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
+const CREDIT_LIMIT = 21;
 
 type FilterType = "all" | "elective" | "required";
 
@@ -38,6 +39,7 @@ export default function Home() {
     const [matchModalVisible, setMatchModalVisible] = useState(false);
     const [matchedCourse, setMatchedCourse] = useState<Course | null>(null);
     const [userProfile, setUserProfile] = useState<Profile | null>(null);
+    const [enrolledCredits, setEnrolledCredits] = useState(0);
     const router = useRouter();
     const { showToast } = useToast();
 
@@ -86,6 +88,23 @@ export default function Home() {
             const matchedIds = matches?.map(m => m.course_id) || [];
             console.log("Matched IDs:", matchedIds);
 
+            // Calculate enrolled credits from matched/pending courses
+            if (matches && matches.length > 0) {
+                const { data: enrolledCourses } = await supabase
+                    .from("matches")
+                    .select("course_id, status, courses(credits)")
+                    .eq("user_id", user.id)
+                    .in("status", ["matched", "pending"]);
+
+                const totalCredits = enrolledCourses?.reduce((sum, match) => {
+                    const courseData = match.courses as any;
+                    return sum + (courseData?.credits || 3);
+                }, 0) || 0;
+                setEnrolledCredits(totalCredits);
+            } else {
+                setEnrolledCredits(0);
+            }
+
             let query = supabase.from("courses").select("*");
 
             if (filter === "elective") {
@@ -118,26 +137,52 @@ export default function Home() {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (user && currentCourse) {
-            const status = direction === "right"
-                ? (Math.random() < (currentCourse.match_probability || 0.5) ? "matched" : "pending")
-                : "rejected";
+            if (direction === "right") {
+                const courseCredits = currentCourse.credits || 3;
 
-            await supabase.from("matches").insert({
-                user_id: user.id,
-                course_id: currentCourse.id,
-                status: status
-            });
+                // Check credit limit
+                if (enrolledCredits + courseCredits > CREDIT_LIMIT) {
+                    showToast(`Credit limit reached! (${enrolledCredits}/${CREDIT_LIMIT})`, "error");
+                    translateX.value = withSpring(0);
+                    translateY.value = withSpring(0);
+                    return;
+                }
 
-            if (status === "matched") {
-                setMatchedCourse(currentCourse);
-                setMatchModalVisible(true);
+                // Check if course is elective or required
+                const status = currentCourse.is_elective ? "pending" : "matched";
+
+                await supabase.from("matches").insert({
+                    user_id: user.id,
+                    course_id: currentCourse.id,
+                    status: status
+                });
+
+                // Update enrolled credits
+                setEnrolledCredits(prev => prev + courseCredits);
+
+                // Show different messages and behavior based on course type
+                if (currentCourse.is_elective) {
+                    showToast(`Applied to ${currentCourse.code}! (+${courseCredits} credits pending)`, "success");
+                } else {
+                    // Required course - auto-matched
+                    showToast(`Matched with ${currentCourse.code}! (+${courseCredits} credits)`, "success");
+                    setMatchedCourse(currentCourse);
+                    setMatchModalVisible(true);
+                }
+            } else {
+                // Left swipe = rejected
+                await supabase.from("matches").insert({
+                    user_id: user.id,
+                    course_id: currentCourse.id,
+                    status: "rejected"
+                });
             }
         }
 
         translateX.value = 0;
         translateY.value = 0;
         setCurrentIndex(prev => prev + 1);
-    }, [courses, currentIndex, translateX, translateY]);
+    }, [courses, currentIndex, translateX, translateY, showToast, enrolledCredits]);
 
     const gesture = Gesture.Pan()
         .onUpdate((event) => {
@@ -189,6 +234,7 @@ export default function Home() {
         if (user) {
             await supabase.from("matches").delete().eq("user_id", user.id);
             setCurrentIndex(0);
+            setEnrolledCredits(0);
             await fetchCourses();
         }
         setLoading(false);
@@ -227,20 +273,40 @@ export default function Home() {
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaView className="flex-1 bg-white flex-col">
-                <View className="px-8 py-6 flex-row justify-between items-center w-full pt-10">
-                    <View>
-                        <Text className="text-4xl font-black text-pink-500 tracking-tighter">Love Drop</Text>
-                        <Text className="text-gray-400 font-medium text-sm">Find your perfect course match</Text>
+                {/* Header with Logo */}
+                <View className="px-6 pt-2 pb-1">
+                    <View className="flex-row justify-between items-center">
+                        <View>
+                            <Text className="text-3xl font-black text-pink-500 tracking-tighter">Love Drop</Text>
+                            <Text className="text-gray-400 font-medium text-xs">Find your perfect course match</Text>
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => setFilterModalVisible(true)}
+                            className="bg-gray-100 p-2.5 rounded-full"
+                        >
+                            <Filter size={20} color="#374151" />
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        onPress={() => setFilterModalVisible(true)}
-                        className="bg-gray-100 p-3 rounded-full"
-                    >
-                        <Filter size={22} color={filter !== "all" ? "#ec4899" : "#6B7280"} />
-                    </TouchableOpacity>
                 </View>
 
-                <View className="flex-1 items-center justify-center w-full relative px-6 py-4">
+                {/* Credit Bar */}
+                <View className="px-6 pb-2">
+                    <View className="flex-row justify-between items-center mb-1">
+                        <Text className="text-gray-500 font-medium text-xs">Term Credits</Text>
+                        <Text className={`font-bold text-xs ${enrolledCredits >= CREDIT_LIMIT ? "text-red-500" : "text-green-600"}`}>
+                            {enrolledCredits}/{CREDIT_LIMIT}
+                        </Text>
+                    </View>
+                    <View className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <View
+                            className={`h-full rounded-full ${enrolledCredits >= CREDIT_LIMIT ? "bg-red-500" : "bg-pink-500"}`}
+                            style={{ width: `${Math.min((enrolledCredits / CREDIT_LIMIT) * 100, 100)}%` }}
+                        />
+                    </View>
+                </View>
+
+                {/* Card Area */}
+                <View className="flex-1 items-center justify-center w-full relative px-4">
                     <GestureDetector gesture={gesture}>
                         <Animated.View
                             className="w-full h-full z-20"
@@ -254,27 +320,28 @@ export default function Home() {
                     </GestureDetector>
                 </View>
 
-                <View className="flex-row gap-10 justify-center items-center pb-12 pt-4">
+                {/* Action Buttons */}
+                <View className="flex-row gap-8 justify-center items-center py-4">
                     <TouchableOpacity
                         activeOpacity={0.7}
-                        className="bg-white p-6 rounded-full shadow-xl border border-red-50"
+                        className="bg-white p-5 rounded-full shadow-lg border border-red-50"
                         onPress={() => {
                             translateX.value = withSpring(-SCREEN_WIDTH * 1.5);
                             completeSwipe("left");
                         }}
                     >
-                        <X size={40} color="#ef4444" strokeWidth={3} />
+                        <X size={32} color="#ef4444" strokeWidth={3} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         activeOpacity={0.7}
-                        className="bg-pink-500 p-6 rounded-full shadow-2xl shadow-pink-200"
+                        className="bg-pink-500 p-5 rounded-full shadow-xl shadow-pink-200"
                         onPress={() => {
                             translateX.value = withSpring(SCREEN_WIDTH * 1.5);
                             completeSwipe("right");
                         }}
                     >
-                        <Heart size={40} color="white" fill="white" />
+                        <Heart size={32} color="white" fill="white" />
                     </TouchableOpacity>
                 </View>
 

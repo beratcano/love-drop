@@ -15,6 +15,8 @@ Love Drop is a React Native mobile application built with Expo that provides a T
 - **Animations**: react-native-reanimated (~3.16.1)
 - **Gestures**: react-native-gesture-handler (~2.20.2)
 - **Icons**: lucide-react-native
+- **Avatars**: @dicebear/core, @dicebear/collection (avataaars style)
+- **SVG**: react-native-svg (for avatar rendering)
 - **State**: React Context API (no Redux/Zustand)
 - **Testing**: Jest with jest-expo preset
 
@@ -75,10 +77,12 @@ The app uses Expo Router with file-based routing:
 ### Database Schema (Supabase)
 
 **Tables:**
-- `courses` - Course information (code, title, description, instructor_name, schedule, image_url, is_elective, match_probability)
+- `courses` - Course information (code, title, description, instructor_id FK→profiles, day_of_week, start_time, end_time, image_url, is_elective, match_probability, credits)
+  - 15 required courses (is_elective=false) - general university courses
+  - 15 elective courses (is_elective=true) - all taught by test teacher
 - `matches` - User-course matches (user_id, course_id, status: "matched"|"pending"|"rejected")
 - `messages` - Chat messages (match_id, sender_id, content)
-- `profiles` - User profiles (id, email, full_name, avatar_url, avatar_config)
+- `profiles` - User profiles (id, email, full_name, is_student, avatar_url, avatar_config, department, faculty, term)
 
 ### Supabase Configuration
 
@@ -94,18 +98,35 @@ The swipe functionality in `app/(tabs)/home.tsx` uses:
 - `react-native-reanimated` for smooth animations
 - `react-native-gesture-handler` for pan gestures
 - Swipe threshold of 25% screen width
-- Automatic match probability simulation (configurable per course)
+- Credit limit tracking (21 credits max per term)
 - Match status: "matched" (shows MatchModal), "pending", or "rejected"
 - Filters courses by: all, elective only, or required only
 
+**Home Screen Layout:**
+- Header: "Love Drop" logo + subtitle (left), filter button (right)
+- Credit bar: Term credits progress bar below header
+- Center: Swipe card area (tap card to see full details)
+- Bottom: Action buttons (X to skip, Heart to match)
+
+**Course Types:**
+- Required courses (is_elective=false): Auto-matched on swipe right
+- Elective courses (is_elective=true): Creates "pending" status, requires teacher approval
+
 ### Avatar System
 
-Users can create custom avatars using the `AvatarBuilder` component:
-- Customizable features: `skinColor`, `eyeStyle`, `noseStyle`, `mouthStyle`, `hairStyle`, `hairColor`
-- Uses SVG (react-native-svg) for rendering avatar components
+Users can create custom avatars using the `AvatarBuilder` component with DiceBear:
+- Uses `@dicebear/core` and `@dicebear/collection` for client-side avatar generation
+- Style: `avataaars` with customizable features:
+  - Face: eyes, eyebrows, mouth
+  - Hair: style, color
+  - Beard: facial hair style & color
+  - Accessories: glasses and accessory colors
+  - Outfit: clothing style & color
+  - Colors: skin color, background color
+- `SvgXml` from react-native-svg renders the generated SVG
 - Avatar configuration stored in `profiles.avatar_config` as JSON
 - `AvatarPreview` component renders the configured avatar at any size
-- Default configuration available in `defaultAvatarConfig`
+- Default configuration includes: smile mouth, blue shirt, sky blue background
 
 ### Animation Patterns
 
@@ -136,17 +157,69 @@ All context providers should be added to `app/_layout.tsx`:
 1. Users start at `app/index.tsx` (landing page)
 2. Login via `app/(auth)/login.tsx`
 3. Supabase handles auth state with AsyncStorage persistence
-4. On successful login, redirect to `/(tabs)/home`
+4. On successful login:
+   - Students redirect to `/(tabs)/home`
+   - Teachers redirect to `/(teacher)/courses`
 5. Protected routes check `supabase.auth.getUser()` and redirect to login if unauthenticated
+6. Test login buttons available:
+   - "Student Login (Test)" - logs in as `tester@lovedrop.com`
+   - "Teacher Login (Test)" - logs in as `teacher@lovedrop.com`, auto-assigns all courses
 
-### Match Flow
+### Teacher Portal
 
-1. User swipes right on a course in home screen
-2. Match probability determines if it's an instant match
-3. If matched, `MatchModal` appears with animation
-4. User can "Send a Message" (navigates to chat) or "Keep Swiping"
-5. Match record is created in database with status
-6. Matched courses are excluded from future swipes
+Teachers have a separate route group `app/(teacher)/` with:
+- `courses.tsx` - List of courses they teach with student match counts
+- `chats.tsx` - List of student conversations, filterable by course
+- `settings.tsx` - Teacher settings and logout
+
+Teacher features:
+- View all assigned courses
+- See how many students have matched with each course
+- Switch between courses to view different student conversations
+- Real-time messaging with students via `app/teacher-chat.tsx`
+
+### Real-Time Messaging
+
+Chat uses Supabase Realtime with `postgres_changes`:
+- Messages table has `REPLICA IDENTITY FULL` enabled
+- Both student (`app/chat.tsx`) and teacher (`app/teacher-chat.tsx`) subscribe to INSERT events
+- Messages are filtered by `match_id` for each conversation
+- New messages appear instantly without refresh
+
+### Match Flow (Two-Sided Matching)
+
+**Required Courses (is_elective=false):**
+1. Student swipes right → auto-matched immediately
+2. Shows MatchModal animation
+3. Student can start chatting right away
+
+**Elective Courses (is_elective=true):**
+
+*Student Side:*
+1. Student swipes right on a course → creates "pending" match
+2. Student sees toast "Applied to {course}! Waiting for approval."
+3. Swiped courses are excluded from future swipes
+
+*Teacher Side:*
+1. Teacher selects course from dropdown in header
+2. Teacher sees pending students who swiped right on that course
+3. Teacher swipes right → status changes to "matched"
+4. Teacher swipes left → status changes to "rejected"
+
+**Result:**
+- Required courses: Instant match on student swipe
+- Elective courses: Only when BOTH student and teacher swipe right does a match occur
+- Matched courses appear in student's Matches tab
+- Both can then chat in real-time
+
+### CourseDetailsModal
+
+The `CourseDetailsModal` component shows full course information:
+- Course image header with code badge and elective/required badge
+- Quick stats row: Match %, Elective/Required status, Credits
+- Schedule information
+- Course type explanation (auto-enroll vs requires approval)
+- Course description
 
 ### Styling Approach
 

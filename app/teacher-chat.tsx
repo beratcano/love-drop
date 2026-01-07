@@ -12,14 +12,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "../lib/supabase";
-import { Database } from "../types/supabase";
+import { Message } from "../types/supabase";
 import { ArrowLeft, Send } from "lucide-react-native";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
-type Message = Database["public"]["Tables"]["messages"]["Row"];
-
-export default function Chat() {
-    const { matchId, courseCode } = useLocalSearchParams<{ matchId: string; courseCode: string }>();
+export default function TeacherChat() {
+    const { matchId, courseCode, studentName } = useLocalSearchParams<{
+        matchId: string;
+        courseCode: string;
+        studentName: string;
+    }>();
     const router = useRouter();
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState("");
@@ -68,7 +70,7 @@ export default function Chat() {
 
     function subscribeToMessages() {
         const channel = supabase
-            .channel(`messages:${matchId}`)
+            .channel(`teacher-messages:${matchId}`)
             .on(
                 "postgres_changes",
                 {
@@ -111,15 +113,15 @@ export default function Chat() {
         return (
             <View
                 className={`max-w-[75%] p-3 rounded-2xl mb-2 ${isMe
-                        ? "bg-pink-500 self-end rounded-br-none"
-                        : "bg-white self-start rounded-bl-none shadow-sm"
+                    ? "bg-blue-500 self-end rounded-br-none"
+                    : "bg-white self-start rounded-bl-none shadow-sm"
                     }`}
             >
                 <Text className={isMe ? "text-white" : "text-gray-800"}>
                     {item.content}
                 </Text>
                 <Text
-                    className={`text-xs mt-1 ${isMe ? "text-pink-200" : "text-gray-400"
+                    className={`text-xs mt-1 ${isMe ? "text-blue-200" : "text-gray-400"
                         }`}
                 >
                     {new Date(item.created_at || "").toLocaleTimeString([], {
@@ -134,7 +136,7 @@ export default function Chat() {
     if (loading) {
         return (
             <View className="flex-1 items-center justify-center bg-gray-50">
-                <ActivityIndicator size="large" color="#ec4899" />
+                <ActivityIndicator size="large" color="#3b82f6" />
             </View>
         );
     }
@@ -154,9 +156,14 @@ export default function Chat() {
                     </TouchableOpacity>
                     <View className="flex-1">
                         <Text className="text-lg font-bold text-gray-900">
-                            {courseCode || "Chat"}
+                            {studentName || "Student"}
                         </Text>
-                        <Text className="text-xs text-gray-400">Course Chat</Text>
+                        <View className="flex-row items-center">
+                            <View className="bg-blue-100 px-2 py-0.5 rounded-full mr-2">
+                                <Text className="text-blue-600 font-bold text-xs">{courseCode}</Text>
+                            </View>
+                            <Text className="text-xs text-gray-400">Student Chat</Text>
+                        </View>
                     </View>
                 </View>
 
@@ -176,7 +183,7 @@ export default function Chat() {
                     ListEmptyComponent={
                         <View className="items-center">
                             <Text className="text-gray-400 text-center">
-                                No messages yet.{"\n"}Start the conversation!
+                                No messages yet.{"\n"}Start the conversation with your student!
                             </Text>
                         </View>
                     }
@@ -195,8 +202,8 @@ export default function Chat() {
                         onPress={sendMessage}
                         disabled={!newMessage.trim() || sending}
                         className={`p-3 rounded-full ${newMessage.trim() && !sending
-                                ? "bg-pink-500"
-                                : "bg-gray-200"
+                            ? "bg-blue-500"
+                            : "bg-gray-200"
                             }`}
                     >
                         <Send

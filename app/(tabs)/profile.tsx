@@ -44,9 +44,25 @@ export default function Profile() {
                 .single();
 
             if (data) {
+                // If avatar_config exists, use it; otherwise create default with user ID as seed
+                let avatarConfig = data.avatar_config;
+                if (!avatarConfig) {
+                    avatarConfig = { ...defaultAvatarConfig, seed: user.id };
+                } else if (typeof avatarConfig === "string") {
+                    avatarConfig = JSON.parse(avatarConfig);
+                }
+                // Ensure seed is set
+                if (avatarConfig && !avatarConfig.seed) {
+                    avatarConfig.seed = user.id;
+                }
+                // Migrate old backgroundColor array to single string
+                if (avatarConfig && Array.isArray(avatarConfig.backgroundColor)) {
+                    avatarConfig.backgroundColor = avatarConfig.backgroundColor[0] || "b6e3f4";
+                }
+
                 setProfile({
                     ...data,
-                    avatar_config: data.avatar_config ? (typeof data.avatar_config === "string" ? JSON.parse(data.avatar_config) : data.avatar_config) : null
+                    avatar_config: avatarConfig
                 });
             }
 

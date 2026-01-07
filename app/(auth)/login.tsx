@@ -47,8 +47,8 @@ export default function Login() {
         setLoading(false);
     }
 
-    async function directLogin() {
-        const testEmail = 'tester@lovedrop.com';
+    async function directLogin(isTeacher = false) {
+        const testEmail = isTeacher ? 'teacher@lovedrop.com' : 'tester@lovedrop.com';
         const testPassword = 'password123';
 
         setLoading(true);
@@ -66,8 +66,8 @@ export default function Login() {
                     password: testPassword,
                     options: {
                         data: {
-                            full_name: 'Test User',
-                            role: 'student'
+                            full_name: isTeacher ? 'Dr. Test Teacher' : 'Test User',
+                            is_student: !isTeacher
                         }
                     }
                 });
@@ -86,7 +86,39 @@ export default function Login() {
             if (error) {
                 Alert.alert('Error', error.message);
             } else if (data.session) {
-                router.replace('/(tabs)/home');
+                const userId = data.session.user.id;
+
+                // Update profile with is_student flag if needed
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('is_student')
+                    .eq('id', userId)
+                    .single();
+
+                if (profile && profile.is_student !== !isTeacher) {
+                    await supabase
+                        .from('profiles')
+                        .update({ is_student: !isTeacher, full_name: isTeacher ? 'Dr. Test Teacher' : 'Test User' })
+                        .eq('id', userId);
+                }
+
+                // For teacher: assign all courses to them if they don't have any
+                if (isTeacher) {
+                    const { data: teacherCourses } = await supabase
+                        .from('courses')
+                        .select('id')
+                        .eq('instructor_id', userId);
+
+                    if (!teacherCourses || teacherCourses.length === 0) {
+                        // Assign all courses to this teacher for testing
+                        await supabase
+                            .from('courses')
+                            .update({ instructor_id: userId })
+                            .is('instructor_id', null);
+                    }
+                }
+
+                router.replace(isTeacher ? '/(teacher)/courses' : '/(tabs)/home');
             } else {
                 Alert.alert('Verification Required', 'Test user created. Please try clicking again in a few seconds.');
             }
@@ -134,10 +166,18 @@ export default function Login() {
 
                     <TouchableOpacity
                         className="bg-pink-100 py-4 rounded-xl items-center border border-pink-200"
-                        onPress={directLogin}
+                        onPress={() => directLogin(false)}
                         disabled={loading}
                     >
-                        <Text className="text-pink-700 font-bold text-lg">Direct Login (Test)</Text>
+                        <Text className="text-pink-700 font-bold text-lg">Student Login (Test)</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        className="bg-blue-100 py-4 rounded-xl items-center border border-blue-200"
+                        onPress={() => directLogin(true)}
+                        disabled={loading}
+                    >
+                        <Text className="text-blue-700 font-bold text-lg">Teacher Login (Test)</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
