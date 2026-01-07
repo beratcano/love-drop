@@ -32,6 +32,11 @@ A Tinder-style course matching app built with React Native and Expo. Swipe throu
 |:---:|:---:|:---:|:---:|
 | ![Teacher Home](screenshots/teacher%20homescreen%20view.png) | ![Courses](screenshots/teacher%20home%20screen%20-%20chose%20course%20profile%20modal.png) | ![Messages](screenshots/teacher%20messaging%20screen.png) | ![Logout](screenshots/teacher%20logout%20screen.png) |
 
+### Real-time Chat
+| Student & Teacher Messaging |
+|:---:|
+| ![Chat](screenshots/real%20life%20messaging%20screen-%20both%20student%20and%20teacher%20views.png) |
+
 ## Features
 
 ### For Students
