@@ -37,6 +37,13 @@ A Tinder-style course matching app built with React Native and Expo. Swipe throu
 |:---:|
 | ![Chat](screenshots/real%20life%20messaging%20screen-%20both%20student%20and%20teacher%20views.png) |
 
+### Development
+| Commit History | Initial Commit (21,221 lines) |
+|:---:|:---:|
+| ![Commits](screenshots/github/commit%20history.png) | ![Initial](screenshots/github/initial%20commit%20having%20%2021k%20lines%20of%20new%20code.png) |
+
+> **Note**: The initial commit appears late in the history but contains 21,221 lines of code - the foundation of the entire application.
+
 ## Features
 
 ### For Students
