@@ -2,6 +2,36 @@
 
 A Tinder-style course matching app built with React Native and Expo. Swipe through courses, match with the ones you love, and manage your academic schedule.
 
+## Screenshots
+
+### Authentication & Onboarding
+| Landing Page | Authentication |
+|:---:|:---:|
+| ![Landing](screenshots/landing%20page.png) | ![Auth](screenshots/authentication%20page.png) |
+
+### Student Experience
+| Home Screen | Filter Modal | Course Details |
+|:---:|:---:|:---:|
+| ![Home](screenshots/student%20homepage%20view.png) | ![Filter](screenshots/student%20home%20screen%20-%20filter%20modal.png) | ![Details](screenshots/detailed%20course%20information%20screen.png) |
+
+| Match Screen | Matches & Chat | Profile |
+|:---:|:---:|:---:|
+| ![Match](screenshots/student%20match%20screen.png) | ![Chat](screenshots/matches%20and%20pending%20view%20-%20chat%20screen.png) | ![Profile](screenshots/student%20profile%20page.png) |
+
+| Avatar Builder | Academic Info |
+|:---:|:---:|
+| ![Avatar](screenshots/avatar%20builder%20page.png) | ![Academic](screenshots/students%20academical%20information%20view.png) |
+
+### Schedule Views
+| Weekly | Monthly | Yearly |
+|:---:|:---:|:---:|
+| ![Weekly](screenshots/course%20schedule%20view%20weekly.png) | ![Monthly](screenshots/course%20schedule%20view%20monthly.png) | ![Yearly](screenshots/course%20schedule%20view%20yearly.png) |
+
+### Teacher Portal
+| Home Screen | Course Selection | Messaging | Settings |
+|:---:|:---:|:---:|:---:|
+| ![Teacher Home](screenshots/teacher%20homescreen%20view.png) | ![Courses](screenshots/teacher%20home%20screen%20-%20chose%20course%20profile%20modal.png) | ![Messages](screenshots/teacher%20messaging%20screen.png) | ![Logout](screenshots/teacher%20logout%20screen.png) |
+
 ## Features
 
 ### For Students
